@@ -60,6 +60,7 @@ export default function Home() {
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [loadingPlaylist, setLoadingPlaylist] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [isPlaylistPanelOpen, setIsPlaylistPanelOpen] = useState(false);
 
   useEffect(() => {
     const savedQuery = window.localStorage.getItem(LS_LAST_QUERY);
@@ -153,6 +154,7 @@ export default function Home() {
     setPlaylistId(data?.playlistId ?? plId);
     setPlaylistNextToken(data?.nextPageToken ?? null);
     setCurrentVideoId(items[0]?.videoId ?? null);
+    setIsPlaylistPanelOpen(items.length > 0);
     setLoadingPlaylist(false);
   };
 
@@ -183,6 +185,7 @@ export default function Home() {
     setPlaylistId(null);
     setPlaylistNextToken(null);
     setCurrentVideoId(videoId);
+    setIsPlaylistPanelOpen(false);
   };
 
   const goPrev = () => {
@@ -201,7 +204,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <div className="mx-auto max-w-[1440px] px-4 py-6">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-sm text-neutral-500 dark:text-neutral-400">
@@ -270,14 +273,27 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="mt-6 grid gap-6 md:grid-cols-[1fr_360px]">
-          <section className="space-y-6">
+        <main className="mt-6 space-y-6">
+          <section
+            className={`grid gap-6 ${
+              isPlaylistPanelOpen && playlist.length > 0
+                ? "lg:grid-cols-[minmax(0,1fr)_360px]"
+                : "grid-cols-1"
+            }`}
+          >
             <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
                   Player
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 justify-end">
+                  <button
+                    className="rounded-lg border border-neutral-200 px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                    onClick={() => setIsPlaylistPanelOpen((v) => !v)}
+                    disabled={playlist.length === 0}
+                  >
+                    {isPlaylistPanelOpen ? "Hide playlist" : "Show playlist"}
+                  </button>
                   <button
                     className="rounded-lg border border-neutral-200 px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
                     onClick={goPrev}
@@ -316,152 +332,148 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
-                  Results
-                </div>
-                <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                  No recommendations · only search
-                </div>
-              </div>
-
-              <div className="mt-3 space-y-2">
-                {results.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-neutral-500">
-                    Try “linear algebra” or “learn SQL”.
+            {isPlaylistPanelOpen && playlist.length > 0 ? (
+              <aside className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+                      Playlist
+                    </div>
+                    <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                      {playlistId ? `list=${playlistId}` : "-"} · {playlist.length}{" "}
+                      item{playlist.length === 1 ? "" : "s"}
+                    </div>
                   </div>
-                ) : (
-                  results.map((r: any) => {
-                    const vid = r?.id?.videoId as string | undefined;
-                    const plId = r?.id?.playlistId as string | undefined;
-                    const thumb =
-                      r?.snippet?.thumbnails?.medium?.url ??
-                      r?.snippet?.thumbnails?.default?.url ??
-                      null;
-                    const title = r?.snippet?.title ?? "Untitled";
-                    const channel = r?.snippet?.channelTitle ?? "";
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                    Click to play
+                  </div>
+                </div>
 
-                    const primaryId = resultType === "playlist" ? plId : vid;
-                    if (!primaryId) return null;
+                <div className="mt-3 flex max-h-[70vh] flex-col">
+                  <>
+                    <div className="ct-scroll space-y-2 overflow-auto pr-1">
+                      {playlist.map((v, idx) => {
+                        const id = v.videoId;
+                        const active = id === currentVideoId;
+                        return (
+                          <div
+                            key={id}
+                            className={`rounded-lg border p-2 ${
+                              active
+                                ? "border-neutral-900 bg-neutral-50 dark:border-neutral-100 dark:bg-neutral-900/40"
+                                : "border-neutral-200 dark:border-neutral-800"
+                            }`}
+                          >
+                            <button
+                              className="block w-full text-left"
+                              onClick={() => setCurrentVideoId(id)}
+                            >
+                              <div className="flex gap-2">
+                                <div className="mt-0.5 w-8 shrink-0 text-right text-xs text-neutral-500 dark:text-neutral-400">
+                                  {typeof v.position === "number"
+                                    ? v.position + 1
+                                    : idx + 1}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="line-clamp-2 text-sm font-medium">
+                                    {v.title}
+                                  </div>
+                                  <div className="truncate text-xs text-neutral-500 dark:text-neutral-400">
+                                    {v.channelTitle}
+                                  </div>
+                                </div>
+                              </div>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
 
-                    return (
+                    <div className="mt-3">
                       <button
-                        key={primaryId}
-                        className="flex w-full items-center gap-3 rounded-lg border border-neutral-200 p-2 text-left hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
-                        onClick={() => {
-                          if (resultType === "playlist") openPlaylistById(primaryId);
-                          else playVideo(primaryId);
-                        }}
+                        className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                        onClick={loadMorePlaylist}
+                        disabled={!playlistNextToken || loadingMore}
                       >
-                        <div className="h-12 w-20 overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-900">
-                          {thumb ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={thumb}
-                              alt=""
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                            />
-                          ) : null}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="line-clamp-2 text-sm font-medium">
-                            {title}
-                          </div>
-                          <div className="truncate text-xs text-neutral-500 dark:text-neutral-400">
-                            {channel}
-                          </div>
-                        </div>
-                        <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                          {resultType === "playlist" ? "Open" : "Play"}
-                        </div>
+                        {loadingMore
+                          ? "Loading..."
+                          : playlistNextToken
+                            ? "Load more"
+                            : "No more items"}
                       </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
+                    </div>
+                  </>
+                </div>
+              </aside>
+            ) : null}
           </section>
 
-          <aside className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
-                  Playlist
-                </div>
-                <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {playlistId ? `list=${playlistId}` : "—"} · {playlist.length}{" "}
-                  item{playlist.length === 1 ? "" : "s"}
-                </div>
+          <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+                Results
               </div>
               <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                Click to play
+                No recommendations · only search
               </div>
             </div>
 
-            <div className="mt-3 flex max-h-[70vh] flex-col">
-              {playlist.length === 0 ? (
-                <div className="py-10 text-center text-sm text-neutral-500">
-                  Open a playlist from search to see its items here.
+            <div className="mt-3 space-y-2">
+              {results.length === 0 ? (
+                <div className="py-8 text-center text-sm text-neutral-500">
+                  Try “linear algebra” or “learn SQL”.
                 </div>
               ) : (
-                <>
-                  <div className="ct-scroll space-y-2 overflow-auto pr-1">
-                    {playlist.map((v, idx) => {
-                      const id = v.videoId;
-                      const active = id === currentVideoId;
-                      return (
-                        <div
-                          key={id}
-                          className={`rounded-lg border p-2 ${
-                            active
-                              ? "border-neutral-900 bg-neutral-50 dark:border-neutral-100 dark:bg-neutral-900/40"
-                              : "border-neutral-200 dark:border-neutral-800"
-                          }`}
-                        >
-                          <button
-                            className="block w-full text-left"
-                            onClick={() => setCurrentVideoId(id)}
-                          >
-                            <div className="flex gap-2">
-                              <div className="mt-0.5 w-8 shrink-0 text-right text-xs text-neutral-500 dark:text-neutral-400">
-                                {typeof v.position === "number"
-                                  ? v.position + 1
-                                  : idx + 1}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="line-clamp-2 text-sm font-medium">
-                                  {v.title}
-                                </div>
-                                <div className="truncate text-xs text-neutral-500 dark:text-neutral-400">
-                                  {v.channelTitle}
-                                </div>
-                              </div>
-                            </div>
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                results.map((r: SearchVideoItem) => {
+                  const vid = r?.id?.videoId as string | undefined;
+                  const plId = r?.id?.playlistId as string | undefined;
+                  const thumb =
+                    r?.snippet?.thumbnails?.medium?.url ??
+                    r?.snippet?.thumbnails?.default?.url ??
+                    null;
+                  const title = r?.snippet?.title ?? "Untitled";
+                  const channel = r?.snippet?.channelTitle ?? "";
 
-                  <div className="mt-3">
+                  const primaryId = resultType === "playlist" ? plId : vid;
+                  if (!primaryId) return null;
+
+                  return (
                     <button
-                      className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
-                      onClick={loadMorePlaylist}
-                      disabled={!playlistNextToken || loadingMore}
+                      key={primaryId}
+                      className="flex w-full items-center gap-3 rounded-lg border border-neutral-200 p-2 text-left hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                      onClick={() => {
+                        if (resultType === "playlist") openPlaylistById(primaryId);
+                        else playVideo(primaryId);
+                      }}
                     >
-                      {loadingMore
-                        ? "Loading…"
-                        : playlistNextToken
-                          ? "Load more"
-                          : "No more items"}
+                      <div className="h-12 w-20 overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-900">
+                        {thumb ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={thumb}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="line-clamp-2 text-sm font-medium">
+                          {title}
+                        </div>
+                        <div className="truncate text-xs text-neutral-500 dark:text-neutral-400">
+                          {channel}
+                        </div>
+                      </div>
+                      <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                        {resultType === "playlist" ? "Open" : "Play"}
+                      </div>
                     </button>
-                  </div>
-                </>
+                  );
+                })
               )}
             </div>
-          </aside>
+          </section>
         </main>
       </div>
     </div>
